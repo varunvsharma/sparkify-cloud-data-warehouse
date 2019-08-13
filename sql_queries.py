@@ -28,3 +28,35 @@ drop_table_queries = [staging_events_table_drop,
                       song_table_drop,
                       artist_table_drop,
                       time_table_drop]
+
+# CREATE TABLES
+
+staging_events_table_create= """CREATE TABLE IF NOT EXISTS staging_events (artist varchar,
+                                                                           auth varchar,
+                                                                           first_name varchar,
+                                                                           gender varchar,
+                                                                           item_in_session int,
+                                                                           last_name varchar,
+                                                                           length float,
+                                                                           level varchar,
+                                                                           location varchar,
+                                                                           method varchar,
+                                                                           page varchar,
+                                                                           registration float,
+                                                                           session_id int,
+                                                                           song varchar,
+                                                                           status int,
+                                                                           ts timestamp,
+                                                                           user_agent varchar,
+                                                                           user_id int)"""
+
+staging_songs_table_create = """CREATE TABLE IF NOT EXISTS staging_songs (num_songs int,
+                                                                          artist_id varchar(18),
+                                                                          artist_latitude float,
+                                                                          artist_longitude float,
+                                                                          artist_location varchar,
+                                                                          artist_name varchar,
+                                                                          song_id varchar(18),
+                                                                          title varchar,
+                                                                          duration float,
+                                                                          year int)"""
