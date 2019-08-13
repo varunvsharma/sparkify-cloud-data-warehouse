@@ -28,6 +28,12 @@ def create_tables(cur, conn):
 
 
 def main():
+    """Call the drop_tables and create_tables functions.
+
+    Create database connection and cursor objects using the cluster configuration parameters stored
+    in the data warehouse configuration file. Use these objects to call the drop_tables and create_tables
+    functions.
+    """
     config = configparser.ConfigParser()
     config.read('dwh.cfg')
 
@@ -38,6 +44,7 @@ def main():
     create_tables(cur, conn)
 
     conn.close()
+
 
 if __name__ == "__main__":
     main()
