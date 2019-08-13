@@ -99,6 +99,23 @@ time_table_create = """CREATE TABLE IF NOT EXISTS time (start_time timestamp,
                                                         PRIMARY KEY (start_time))
                         DISTSTYLE AUTO"""
 
+# STAGING TABLES
+
+staging_events_copy = """COPY staging_events
+                         FROM {}
+                         iam_role {}
+                         json {}
+                         TIMEFORMAT 'epochmillisecs'
+                         """.format(LOG_DATA, ARN, LOG_JSONPATH)
+
+staging_songs_copy = """COPY staging_songs
+                        FROM {}
+                        iam_role {}
+                        json 'auto'
+                        """.format(SONG_DATA, ARN)
+
+# QUERY LISTS
+
 drop_table_queries = [staging_events_table_drop,
                       staging_songs_table_drop,
                       songplay_table_drop,
@@ -114,3 +131,6 @@ create_table_queries = [staging_events_table_create,
                         song_table_create,
                         artist_table_create,
                         time_table_create]
+
+copy_table_queries = [staging_events_copy,
+                      staging_songs_copy]
