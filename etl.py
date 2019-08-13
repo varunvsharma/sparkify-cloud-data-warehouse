@@ -28,6 +28,12 @@ def insert_tables(cur, conn):
 
 
 def main():
+    """Call the load_staging_tables and insert_tables functions.
+
+    Create database connection and cursor objects using the cluster configuration parameters stored
+    in the data warehouse configuration file. Use these objects to call the load_staging_tables and
+    insert_tables functions.
+    """
     config = configparser.ConfigParser()
     config.read('dwh.cfg')
 
