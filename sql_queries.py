@@ -114,6 +114,230 @@ staging_songs_copy = """COPY staging_songs
                         json 'auto'
                         """.format(SONG_DATA, ARN)
 
+# FINAL TABLES
+
+songplay_table_insert = """CREATE TEMP TABLE stage (start_time timestamp,
+                                                    user_id int,
+                                                    level varchar,
+                                                    song_id varchar(18),
+                                                    artist_id varchar(18),
+                                                    session_id int,
+                                                    location varchar,
+                                                    user_agent varchar);
+
+                           INSERT INTO stage (start_time,
+                                              user_id,
+                                              level,
+                                              song_id,
+                                              artist_id,
+                                              session_id,
+                                              location,
+                                              user_agent)
+                           SELECT ts,
+                                  user_id,
+                                  level,
+                                  song_id,
+                                  artist_id,
+                                  session_id,
+                                  location,
+                                  user_agent
+                           FROM staging_events
+                           JOIN staging_songs
+                           ON staging_events.song = staging_songs.title;
+
+                           BEGIN TRANSACTION;
+
+                           UPDATE songplay
+                           SET user_id = stage.user_id,
+                               level = stage.level,
+                               song_id = stage.song_id,
+                               artist_id = stage.artist_id,
+                               session_id = stage.session_id,
+                               location = stage.location,
+                               user_agent = stage.user_agent
+                           FROM stage
+                           WHERE songplay.start_time = stage.start_time
+                                 AND songplay.user_id = stage.user_id
+                                 AND songplay.level = stage.level
+                                 AND songplay.song_id = stage.song_id
+                                 AND songplay.artist_id = stage.artist_id
+                                 AND songplay.session_id = stage.session_id
+                                 AND songplay.location = stage.location
+                                 AND songplay.user_agent = stage.user_agent;
+
+                           DELETE FROM stage
+                           USING songplay
+                           WHERE stage.start_time = songplay.start_time
+                                 AND stage.user_id = songplay.user_id
+                                 AND stage.level = songplay.level
+                                 AND stage.song_id = songplay.song_id
+                                 AND stage.artist_id = songplay.artist_id
+                                 AND stage.session_id = songplay.session_id
+                                 AND stage.location = songplay.location
+                                 AND stage.user_agent = songplay.user_agent;
+
+                           INSERT INTO songplay (start_time,
+                                                 user_id,
+                                                 level,
+                                                 song_id,
+                                                 artist_id,
+                                                 session_id,
+                                                 location,
+                                                 user_agent)
+                           SELECT * FROM stage;
+
+                           END TRANSACTION;
+
+                           DROP TABLE stage;"""
+
+user_table_insert = """CREATE TEMP TABLE stage (LIKE users);
+
+                       INSERT INTO stage
+                       SELECT DISTINCT user_id
+                       FROM staging_events
+                       WHERE user_id IS NOT NULL;
+
+                       BEGIN TRANSACTION;
+
+                       DELETE FROM users
+                       USING stage
+                       WHERE users.user_id = stage.user_id;
+
+                       INSERT INTO users
+                       SELECT * FROM stage;
+
+                       END TRANSACTION;
+
+                       CREATE TEMP TABLE stage2 (LIKE users);
+
+                       INSERT INTO stage2
+                       SELECT DISTINCT user_id,
+                                       first_name,
+                                       last_name,
+                                       gender,
+                                       level
+                       FROM staging_events
+                       WHERE user_id IS NOT NULL;
+
+                       BEGIN TRANSACTION;
+
+                       UPDATE users
+                       SET first_name = stage2.first_name,
+                           last_name = stage2.last_name,
+                           gender = stage2.gender,
+                           level = stage2.level
+                       FROM stage2
+                       WHERE users.user_id = stage2.user_id;
+
+                       DELETE FROM stage2
+                       USING users
+                       WHERE stage2.user_id = users.user_id;
+
+                       INSERT INTO users
+                       SELECT * FROM stage2;
+
+                       END TRANSACTION;
+
+                       DROP TABLE stage;
+                       DROP TABLE stage2;"""
+
+song_table_insert = """CREATE TEMP TABLE stage (LIKE songs);
+
+                       INSERT INTO stage
+                       SELECT DISTINCT song_id,
+                                       title,
+                                       artist_id,
+                                       year,
+                                       duration
+                       FROM staging_songs;
+
+                       BEGIN TRANSACTION;
+
+                       DELETE FROM songs
+                       USING stage
+                       WHERE songs.song_id = stage.song_id;
+
+                       INSERT INTO songs
+                       SELECT * FROM stage;
+
+                       END TRANSACTION;
+
+                       DROP TABLE stage;"""
+
+artist_table_insert = """CREATE TEMP TABLE stage (LIKE artists);
+
+                         INSERT INTO stage
+                         SELECT DISTINCT artist_id
+                         FROM staging_songs;
+
+                         BEGIN TRANSACTION;
+
+                         DELETE FROM artists
+                         USING stage
+                         WHERE artists.artist_id = stage.artist_id;
+
+                         INSERT INTO artists
+                         SELECT * FROM stage;
+
+                         END TRANSACTION;
+
+                         CREATE TEMP TABLE stage2 (LIKE artists);
+
+                         INSERT INTO stage2
+                         SELECT DISTINCT artist_id,
+                                         artist_name,
+                                         artist_location,
+                                         artist_latitude,
+                                         artist_longitude
+                         FROM staging_songs;
+
+                         BEGIN TRANSACTION;
+
+                         UPDATE artists
+                         SET name = stage2.name,
+                             location = stage2.location,
+                             latitude = stage2.latitude,
+                             longitude = stage2.longitude
+                         FROM stage2
+                         WHERE artists.artist_id = stage2.artist_id;
+
+                         DELETE FROM stage2
+                         USING artists
+                         WHERE stage2.artist_id = artists.artist_id;
+
+                         INSERT INTO artists
+                         SELECT * FROM stage2;
+
+                         END TRANSACTION;
+
+                         DROP TABLE stage;
+                         DROP TABLE stage2;"""
+
+time_table_insert = """CREATE TEMP TABLE stage (LIKE time);
+
+                       INSERT INTO stage
+                       SELECT DISTINCT ts AS "start_time",
+                                       EXTRACT(h FROM ts) AS "hour",
+                                       EXTRACT(d FROM ts) AS "day",
+                                       EXTRACT(w FROM ts) AS "week",
+                                       EXTRACT(mon FROM ts) AS "month",
+                                       EXTRACT(yr FROM ts) AS "year",
+                                       EXTRACT(dw FROM ts) AS "weekday"
+                       FROM staging_events;
+
+                       BEGIN TRANSACTION;
+
+                       DELETE FROM time
+                       USING stage
+                       WHERE time.start_time = stage.start_time;
+
+                       INSERT INTO time
+                       SELECT * FROM stage;
+
+                       END TRANSACTION;
+
+                       DROP TABLE stage;"""
+
 # QUERY LISTS
 
 drop_table_queries = [staging_events_table_drop,
@@ -134,3 +358,9 @@ create_table_queries = [staging_events_table_create,
 
 copy_table_queries = [staging_events_copy,
                       staging_songs_copy]
+
+insert_table_queries = [songplay_table_insert,
+                        user_table_insert,
+                        song_table_insert,
+                        artist_table_insert,
+                        time_table_insert]
